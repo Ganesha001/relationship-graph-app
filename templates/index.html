@@ -1,0 +1,114 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Relationship Graph</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Relationship Graph Builder</h1>
+        <form id="relationshipForm">
+            <div class="mb-3">
+                <input type="text" class="form-control" id="fromEntity" placeholder="From Entity">
+            </div>
+            <div class="mb-3">
+                <input type="text" class="form-control" id="toEntity" placeholder="To Entity">
+            </div>
+            <div class="mb-3">
+                <input type="text" class="form-control" id="relationType" placeholder="Relationship Type">
+            </div>
+            <div class="mb-3">
+                <input type="text" class="form-control" id="location" placeholder="Location">
+            </div>
+            <button type="submit" class="btn btn-primary">Add Relationship</button>
+            <a href="#" id="visualizeBtn" class="btn btn-success">Visualize</a>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('relationshipForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                from_entity: document.getElementById('fromEntity').value,
+                to_entity: document.getElementById('toEntity').value,
+                relation_type: document.getElementById('relationType').value,
+                location: document.getElementById('location').value
+            };
+
+            try {
+                const response = await axios.post('/add_relationship', data);
+                alert(response.data.success ? 'Relationship Added' : 'Error');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to add relationship');
+            }
+        });
+
+        document.getElementById('visualizeBtn').addEventListener('click', (e) => {
+            const location = document.getElementById('location').value;
+            if (location) {
+                window.location.href = `/visualize?location=${location}`;
+            } else {
+                alert('Please enter a location');
+            }
+        });
+    </script>
+</body>
+</html>
+
+<!-- graph_view.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Graph Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/standalone/umd/vis-network.min.js"></script>
+    <style>
+        #mynetwork { height: 600px; border: 1px solid lightgray; }
+    </style>
+</head>
+<body>
+    <div id="mynetwork"></div>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const location = '{{ location }}';
+            const response = await axios.get(`/get_relationships?location=${location}`);
+            const relationships = response.data.relationships;
+
+            const nodes = new Set();
+            const edges = [];
+
+            relationships.forEach(item => {
+                const vertex = item.vertices;
+                const edge = item.edges;
+                
+                nodes.add({
+                    id: vertex.id,
+                    label: vertex.properties.name[0].value
+                });
+                
+                edges.push({
+                    from: edge.outV,
+                    to: edge.inV,
+                    label: edge.label
+                });
+            });
+
+            const nodesDataset = new vis.DataSet(Array.from(nodes));
+            const edgesDataset = new vis.DataSet(edges);
+
+            const container = document.getElementById('mynetwork');
+            const data = { nodes: nodesDataset, edges: edgesDataset };
+            const options = { 
+                nodes: { shape: 'box' },
+                edges: { arrows: 'to' }
+            };
+            
+            new vis.Network(container, data, options);
+        });
+    </script>
+</body>
+</html>
